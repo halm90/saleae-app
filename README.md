@@ -1,20 +1,20 @@
 # Saleae Application
 
-The Saleae Pro16 channel logic analyzer is connected directly to an Ubuntu laptop.
-Logic2 runs on that laptop and recognizes the analyzer through a USB connection.
+The Saleae Pro16 channel logic analyzer is connected directly to an Ubuntu saleae host.
+Logic2 runs on that saleae host and recognizes the analyzer through a USB connection.
 
 The application uses the Saleae Logic2 automation library to provide a FastAPI REST
 service for remote hosts. The remote host can configure acquisition parameters, start
 and stop Logic2, start and stop acquisition, and retrieve captured data without needing
-access to the Saleae laptop's graphical interface or its local filesystem layout.
+access to the Saleae application graphical interface or its local filesystem layout.
 
 A simple HTML interface presents the current settings and acquisition status.
 
 ## Design
 
-### Remote laptop responsibilities
+### Remote saleae host responsibilities
 
-The laptop running this service owns the Logic2 process and the physical analyzer
+The saleae host running this service owns the Logic2 process and the physical analyzer
 connection. It is responsible for:
 
 - Launching Logic2 with `Manager.launch()`.
@@ -23,7 +23,7 @@ connection. It is responsible for:
 - Keeping the capture artifact available until the host downloads it.
 - Closing Logic2 and the automation manager when requested.
 
-The remote laptop may place generated capture files in a temporary or otherwise
+The remote saleae host may place generated capture files in a temporary or otherwise
 implementation-specific directory. The directory name and location are not part of
 the public API contract.
 
@@ -38,14 +38,14 @@ behavior. It is responsible for:
 - Maintaining its own application GUI, configuration model, and file naming rules.
 - Deciding how to reference, validate, and compare captured data.
 
-The host does not need to preserve the Saleae laptop's GUI state or its internal
+The host does not need to preserve the Saleae host GUI state or its internal
 capture directory. The `SaleaeControl` compatibility client receives the data as
 bytes and writes it to the path supplied by the host.
 
 ### API transport model
 
 The REST API is language-agnostic and uses JSON request bodies. Captures are created
-on the remote laptop, then returned to the host through a download endpoint. The
+on the remote saleae host, then returned to the host through a download endpoint. The
 host may use any path, folder, or filename that is appropriate for its own application.
 
 ## REST API
@@ -59,12 +59,12 @@ host may use any path, folder, or filename that is appropriate for its own appli
 | `GET` | `/api/acquisition/status` | Read acquisition state. | Returns `idle`, `running`, or `stopped` status and sample count. |
 | `POST` | `/api/acquisition/start` | Start the host-side acquisition lifecycle. | Returns `AcquisitionStatus`. |
 | `POST` | `/api/acquisition/stop` | Stop the host-side acquisition lifecycle. | Returns the updated `AcquisitionStatus`. |
-| `GET` | `/api/logic/status` | Check whether Logic2 is connected on the remote laptop. | Returns `connected` and `device` values. |
-| `POST` | `/api/logic/start` | Launch Logic2 on the remote laptop. | Accepts an optional `application_path`; returns `started` or an error. |
-| `POST` | `/api/capture/run` | Start a timed capture on the remote laptop. | Accepts `data_time`, `channels`, `sample_rate_hz`, and `format`. Returns a `capture_id`. |
+| `GET` | `/api/logic/status` | Check whether Logic2 is connected on the remote saleae host. | Returns `connected` and `device` values. |
+| `POST` | `/api/logic/start` | Launch Logic2 on the remote saleae host. | Accepts an optional `application_path`; returns `started` or an error. |
+| `POST` | `/api/capture/run` | Start a timed capture on the remote saleae host. | Accepts `data_time`, `channels`, `sample_rate_hz`, and `format`. Returns a `capture_id`. |
 | `GET` | `/api/capture/{capture_id}/download?format=csv` | Download the captured data as CSV to the host. | Returns the file bytes with `text/csv` content type. |
 | `GET` | `/api/capture/{capture_id}/download?format=binary` | Download the captured data in Saleae binary format. | Returns the file bytes with `application/octet-stream` content type. |
-| `POST` | `/api/logic/stop` | Close Logic2 on the remote laptop. | Returns `stopped` and the service name. |
+| `POST` | `/api/logic/stop` | Close Logic2 on the remote saleae host. | Returns `stopped` and the service name. |
 
 ### Configuration
 
@@ -104,18 +104,18 @@ GET /api/capture/capture-1/download?format=csv
 ```
 
 The response body is written by `SaleaeControl.gather_data_saleae()` to the path
-supplied by the host application. The remote laptop's temporary capture directory
+supplied by the host application. The remote saleae host's temporary capture directory
 is not exposed to the host and does not need to match the host's directory structure.
 
 ### Compatibility client
 
 `SaleaeControl` keeps the original method names used by the larger application:
 
-- `start_up()` launches Logic2 on the remote laptop.
+- `start_up()` launches Logic2 on the remote saleae host.
 - `gather_data_saleae()` runs a remote capture and saves the downloaded file to the
   host's requested path.
 - `stop_capture()` stops the remote acquisition lifecycle.
-- `cleanup()` closes Logic2 on the remote laptop.
+- `cleanup()` closes Logic2 on the remote saleae host.
 - `check_ref_mrm_data()` validates a file downloaded to the host.
 
 The compatibility client uses HTTPX and does not require the Logic2 package on the
@@ -131,7 +131,7 @@ export SALEAE_CAPTURE_DIR=/tmp/saleae-captures
 uvicorn app.main:app --reload
 ```
 
-The remote laptop should run this service with the Saleae analyzer connected and the
+The remote saleae host should run this service with the Saleae analyzer connected and the
 Logic2 executable available. The host application should configure `remote_url` to the
 address of this service and pass the desired local output path to
 `gather_data_saleae()`.
