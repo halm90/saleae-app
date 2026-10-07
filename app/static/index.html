@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Saleae Application</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; background: #111827; color: #f9fafb; }
+    main { max-width: 760px; margin: 0 auto; padding: 48px 24px; }
+    .card { margin: 20px 0; padding: 20px; background: #1f2937; border-radius: 12px; }
+    .status { display: inline-block; padding: 6px 12px; border-radius: 999px; background: #374151; }
+    button { padding: 10px 16px; border: 0; border-radius: 8px; background: #2563eb; color: white; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: default; }
+    pre { overflow: auto; background: #0b0f19; padding: 16px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Saleae Application</h1>
+    <p>Remote status and acquisition control.</p>
+    <section class="card">
+      <h2>Hardware</h2>
+      <div id="hardware-status" class="status">Checking…</div>
+      <p id="hardware-reason"></p>
+    </section>
+    <section class="card">
+      <h2>Acquisition</h2>
+      <div id="acquisition-status" class="status">idle</div>
+      <p><button id="start" type="button">Start acquisition</button>
+         <button id="stop" type="button" disabled>Stop acquisition</button></p>
+    </section>
+    <section class="card">
+      <h2>Configuration</h2>
+      <pre id="configuration">Loading…</pre>
+    </section>
+  </main>
+  <script>
+    async function refresh() {
+      const [hardware, configuration, acquisition] = await Promise.all([
+        fetch('/api/hardware/status').then(r => r.json()),
+        fetch('/api/configuration').then(r => r.json()),
+        fetch('/api/acquisition/status').then(r => r.json()),
+      ]);
+      document.querySelector('#hardware-status').textContent = hardware.connected ? 'connected' : 'disconnected';
+      document.querySelector('#hardware-reason').textContent = hardware.reason;
+      document.querySelector('#configuration').textContent = JSON.stringify(configuration, null, 2);
+      document.querySelector('#acquisition-status').textContent = acquisition.status;
+      document.querySelector('#start').disabled = acquisition.status === 'running';
+      document.querySelector('#stop').disabled = acquisition.status !== 'running';
+    }
+    document.querySelector('#start').addEventListener('click', async () => {
+      await fetch('/api/acquisition/start', { method: 'POST' });
+      refresh();
+    });
+    document.querySelector('#stop').addEventListener('click', async () => {
+      await fetch('/api/acquisition/stop', { method: 'POST' });
+      refresh();
+    });
+    refresh();
+  </script>
+</body>
+</html>
