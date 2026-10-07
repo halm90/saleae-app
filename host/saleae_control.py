@@ -19,12 +19,10 @@ import httpx
 class SaleaeControl:
     """Compatibility wrapper around the Saleae REST API."""
 
-    def __init__(
-        self,
-        remote_url: str | None = None,
-        timeout: float = 30.0,
-        application_path: str | None = None,
-    ) -> None:
+    def __init__(self,
+                 remote_url: str | None = None,
+                 timeout: float = 30.0,
+                 application_path: str | None = None,) -> None:
         self.remote_url = remote_url.rstrip("/") if remote_url else "http://127.0.0.1:8000"
         self.timeout = timeout
         self.app_path = application_path
@@ -85,34 +83,29 @@ class SaleaeControl:
         average_channel_0 = sum(channel_0) / len(channel_0) if channel_0 else 0.0
         average_channel_1 = sum(channel_1) / len(channel_1) if channel_1 else 0.0
         average_channel_2 = sum(channel_2) / len(channel_2) if channel_2 else 0.0
-        return not (
-            abs(average_channel_0) < 0.01
-            and abs(average_channel_1) < 0.01
-            and abs(average_channel_2) < 0.01
-        )
+        return not ( abs(average_channel_0) < 0.01
+                     and abs(average_channel_1) < 0.01
+                     and abs(average_channel_2) < 0.01 )
 
-    def gather_data_saleae(
-        self,
-        data_time: float,
-        file_name: str,
-        csv_out: bool = True,
-        channels: list[int] | None = None,
-        sample_rate: int | None = None,
-    ) -> None:
+    def gather_data_saleae( self,
+                            data_time: float,
+                            file_name: str,
+                            csv_out: bool = True,
+                            channels: list[int] | None = None,
+                            sample_rate: int | None = None,
+                          ) -> None:
         """Run a timed capture on the remote host and download its CSV."""
         self.start_up()
-        payload = {
-            "data_time": data_time,
-            "channels": channels or [0, 1, 2],
-            "sample_rate_hz": sample_rate or 50,
-            "format": "csv" if csv_out else "binary",
-        }
+        payload = {"data_time": data_time,
+                   "channels": channels or [0, 1, 2],
+                   "sample_rate_hz": sample_rate or 50,
+                   "format": "csv" if csv_out else "binary",
+                  }
         response = self._request("POST", "/api/capture/run", json=payload)
         capture_id = response.json()["capture_id"]
-        download = self._request(
-            "GET",
-            f"/api/capture/{capture_id}/download?format=csv" if csv_out else
-            f"/api/capture/{capture_id}/download?format=binary",
+        download = self._request("GET",
+                                 f"/api/capture/{capture_id}/download?format=csv" if csv_out else
+                                 f"/api/capture/{capture_id}/download?format=binary",
         )
 
         output_path = Path(file_name)
